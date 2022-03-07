@@ -36,7 +36,7 @@ function SignUp() {
       const user = userCredential.user;
 
       updateProfile(auth.currentUser, {
-        displayName: namedQuery
+        displayName: name
       });
 
       const formDataCopy = {...formData};
