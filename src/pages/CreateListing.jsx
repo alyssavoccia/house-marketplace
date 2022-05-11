@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase.config';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -82,16 +83,16 @@ function CreateListing() {
 
       location = data.status === 'ZERO_RESULTS' 
         ? undefined 
-        : data.results[0].formatted_address
+        : data.results[0]?.formatted_address
       
       if (location === undefined || location.includes('undefined')) {
         setLoading(false);
         toast.error('Please enter a valid address.');
+        return;
       }
     } else {
       geolocation.lat = latitude;
       geolocation.lng = longitude;
-      location = address;
     }
 
     // Store image in firebase
@@ -104,7 +105,8 @@ function CreateListing() {
 
         const uploadTask = uploadBytesResumable(storageRef, image);
 
-        uploadTask.on('state_changed', 
+        uploadTask.on(
+          'state_changed', 
           (snapshot) => {
             const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
             console.log('Upload is ' + progress + '% done');
@@ -129,38 +131,52 @@ function CreateListing() {
       toast.error('Images not uploaded.');
     });
 
-    console.log(imgUrls)
+    const formDataCopy = {
+      ...formData,
+      imgUrls,
+      geolocation,
+      timestamp: serverTimestamp()
+    };
+
+    formDataCopy.location = address;
+    delete formDataCopy.images;
+    delete formDataCopy.address;
+    !formDataCopy.offer && delete formDataCopy.discountedPrice;
+
+    const docRef = await addDoc(collection(db, 'listings'), formDataCopy);
 
     setLoading(false);
+
+    toast.success('Listing saved!');
+    navigate(`/category/${formDataCopy.type}/${docRef.id}`);
   };
 
-  const onMutate = e => {
-    let boolean = null;
+  const onMutate = (e) => {
+    let boolean = null
 
     if (e.target.value === 'true') {
-      boolean = true;
+      boolean = true
     }
-
     if (e.target.value === 'false') {
-      boolean = false;
+      boolean = false
     }
 
     // Files
     if (e.target.files) {
       setFormData((prevState) => ({
         ...prevState,
-        images: e.target.files
-      }));
+        images: e.target.files,
+      }))
     }
 
     // Text/Booleans/Numbers
     if (!e.target.files) {
       setFormData((prevState) => ({
         ...prevState,
-        [e.target.id]: boolean ?? e.target.value
+        [e.target.id]: boolean ?? e.target.value,
       }))
     }
-  };
+  }
 
   if (loading) {
     return <Spinner />
@@ -244,8 +260,6 @@ function CreateListing() {
               id='parking'
               value={true}
               onClick={onMutate}
-              min='1'
-              max='50'
             >
               Yes
             </button>
@@ -255,8 +269,6 @@ function CreateListing() {
               id='parking'
               value={false}
               onClick={onMutate}
-              min='1'
-              max='50'
             >
               No
             </button>

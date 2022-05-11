@@ -19,7 +19,12 @@ function Cateogry() {
         const listingsRef = collection(db, 'listings');
 
         // Create a query
-        const q = query(listingsRef, where('type', '==', params.categoryName), orderBy('timestamp', 'desc'), limit(10));
+        const q = query(
+          listingsRef,
+          where('type', '==', params.categoryName),
+          orderBy('timestamp', 'desc'),
+          limit(10)
+        );
 
         // Execute query
         const querySnap = await getDocs(q);
@@ -29,14 +34,14 @@ function Cateogry() {
         querySnap.forEach((doc) => {
           return listings.push({
             id: doc.id,
-            data: doc.data()
+            data: doc.data(),
           });
         });
 
         setListings(listings);
         setLoading(false);
       } catch (error) {
-        toast.error('Could not fetch listings')
+        toast.error('Could not fetch listings');
       }
     }
 
